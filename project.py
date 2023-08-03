@@ -9,6 +9,7 @@ from functools import cache
 from IPython.display import display
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import seaborn as sb
 from datetime import datetime
 from datetime import date
@@ -30,7 +31,17 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def page_home():
+    
+    st.subheader("""
+    TRENT UNIVERSITY
+    
+    APPLIED MODELLING AND QUANTITATIVE METHODS
+    
+    BIG DATA AND FINANCIAL ANALYTICS STREAMS
+    """)
     st.write("""
+
+
 Welcome to the Automation Portfolio Optimization Project!
 
 We are excited to present to you the product of Grace and Shamiul's final work in Applied Modelling and Quantitative Methods, MSc, at Trent University: a thorough portfolio optimization system.
@@ -48,7 +59,9 @@ Functionality that uses past market circumstances to assess performance.
 We are eager to share our research with you, our colleagues, our lecturers, and the financial industry. We hope that our Automation Portfolio Optimization Project will serve as a catalyst for more developments in the fields of finance and quantitative analysis since we think it has the potential to have a significant influence.
 We appreciate your participation in this thrilling endeavor. We cordially encourage you to learn more about our initiative and see for yourself how automation may maximize the effectiveness of your investment plan.
 
-Grace and Shamiul
+Grace Faniyi - 0739463
+
+MD Shamiul Islam - 0743469
 """)
 
     st.info("Go to Menu to SignUp/Login")
@@ -106,7 +119,7 @@ def page2():
         st.experimental_rerun()
     elif option == "Log out":
         st.session_state.login_success = False
-        st.experimental_rerun()
+        #st.experimental_rerun()
 
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
@@ -142,7 +155,7 @@ def view_all_users():
 def fetch_data(tickers):
     try:
             # Fetch historical stock data for the selected tickers
-        data = yf.download(tickers, period="10y", interval="1d", progress=False)['Adj Close']
+        data = yf.download(tickers, period="3y", interval="1d", progress=False)['Adj Close']
         return data
     except:
         return None
@@ -173,18 +186,36 @@ def process_input(all_tickers):
 def get_stock_data(tickers, dataset_period):
 
     if dataset_period == "Daily":
-        data = yf.download(tickers, period='10y', interval='1d')['Adj Close']
+        data = yf.download(tickers, period='3y', interval='1d')['Adj Close']
     else:
-        data = yf.download(tickers, period='10y', interval='1wk')['Adj Close']
+        data = yf.download(tickers, period='3y', interval='1wk')['Adj Close']
     return data
     
+# Function to calculate Mean Conditional Value at Risk (mCVAR)
+def mCVAR(portfolio_returns, confidence_level=0.95):
+    alpha = 1 - confidence_level
+    return -portfolio_returns.quantile(alpha)
+
+# Function to calculate the Sharpe ratio
+def sharpe_ratio(returns, risk_free_rate):
+    excess_returns = returns - risk_free_rate
+    return excess_returns.mean() / excess_returns.std()
+
+
+
+# Initialize login_success attribute
+if "login_success" not in st.session_state:
+    st.session_state.login_success = False
+
 
 
 def page2():
+
+    # Select dataset period (Daily or Weekly)
     dataset_period = st.sidebar.selectbox("Select Stock Data", ("Daily", "Weekly"))
 
     total_portfolio_value = st.sidebar.slider('Amount to invest', 5000, 10000)
-    operation = st.sidebar.selectbox("Select portfolio objective", ("Efficient Frontier", "Hierarchical Risk Parity (HRP)", "Mean Conditional Value at Risk (mCVAR)"))
+    operation = st.sidebar.selectbox("Select portfolio objective", ("Optimal Portfolio", "Diversified Portfolio", "Low Risk Portfolio"))
     # Sample list of tickers
     all_tickers = None
     while all_tickers is None:
@@ -196,18 +227,35 @@ def page2():
     if tickers:
         # Display selected tickers
         tickers_df = pd.DataFrame({'Tickers': tickers})
-        st.subheader("Selected Tickers:")
-        st.write(tickers_df)
 
-        # Select dataset period (Daily or Weekly)
+        # Display the title using Markdown formatting
+        st.markdown('Selected Tickers')
+
+        # Display the table
+        st.table(tickers_df)
+
+        caption_text = ("Table 1: This table shows the selected tickers.")
+         
+        st.caption(caption_text)
         
-
+        
         # Get stock data
         data = get_stock_data(tickers, dataset_period)
+        
+        # Display the title using Markdown formatting
+        st.markdown('Raw close stock data')
+        data_1 = data.tail()
+        st.table(data_1.applymap('{:.2f}'.format))
 
-        st.subheader('Stock Price Closing Data')
-        st.write(data.tail())
-    
+        #ax.annotate(f'{height:.2f}'
+        
+        caption_text = ("Table 2: This table shows the last 5 Rows of Raw Data.")
+         
+        st.caption(caption_text)
+
+        descr = data.describe()
+        st.table(descr.applymap('{:.2f}'.format))
+
         # Continue with portfolio optimization or other operations using the selected tickers and data
 
     
@@ -219,37 +267,46 @@ def page2():
         st.set_option('deprecation.showPyplotGlobalUse', False)
 
         plt.style.use('classic')
-        fig = plt.figure(figsize=(15, 6))
+        fig = plt.figure(figsize=(16, 10))
         for i in range(data.shape[1]):
             plt.plot(data.iloc[:,i], label=data.columns.values[i])
-        plt.legend(loc='upper left', fontsize=12)
-        plt.title('Stock close price trend', fontsize=15)
-        plt.xlabel('Date')
-        plt.ylabel('Price in $')
+        plt.legend(loc='upper left', fontsize=10)
+        plt.title('Stock Close Price Trends', fontsize=18)
+        plt.xlabel('Date', fontsize=16)
+        plt.ylabel('Price in $', fontsize=16)
         st.pyplot()
-    
+        caption_text = ("This chart displays the trend of closing prices of selected stocks over time.\
+                        It provides insights into the historical performance of the stocks and helps identify\
+                        patterns and potential investment opportunities.")
+         
+        st.caption(caption_text)
 
         # Normalized price
         data_nor = data.divide(data.iloc[0] / 100)
 
-        fig = plt.figure(figsize=(15, 6))
+        fig = plt.figure(figsize=(16, 10))
         for i in range(data_nor.shape[1]):
             plt.plot(data_nor.iloc[:,i], label=data_nor.columns.values[i])
-        plt.legend(loc='upper left', fontsize=12)
+        plt.legend(loc='upper left', fontsize=10)
         plt.ylabel('Normalized prices($)')
-        plt.title('Stock Normalized Prices Trends', fontsize=15)
-        plt.xlabel('Date')
-        plt.ylabel('Price in $')
+        plt.title('Stock Normalized Prices Trends', fontsize=18)
+        plt.xlabel('Date', fontsize=16)
+        plt.ylabel('Price in $', fontsize=16)
         st.pyplot()
+        caption_text = ("This chart displays the trend of normalized closing prices of selected stocks over time.\
+                        It provides insights into the historical performance of the stocks and helps identify\
+                        patterns and potential investment opportunities.")
+        st.caption(caption_text)
 
-
+        st.markdown('Covariance of stocks in your portfolio')
         plt.style.use('classic')
-        fig = plt.figure(figsize=(12, 6))
+        fig = plt.figure(figsize=(16, 10))
         sb.heatmap(S,xticklabels=S.columns, yticklabels=S.columns,
-        cmap='PuBu', annot=True, linewidth=0.5)
-        st.subheader('Covariance of stocks in your portfolio')
+        cmap='Greens', annot=True, linewidth=0.5)
         st.pyplot()
-
+        caption_text = ("This visualization represents a color-coded matrix where each cell's color\
+        intensity corresponds to covariance of stocks in your portfolio.")
+        st.caption(caption_text)
 
 
         ef = EfficientFrontier(mean,S)
@@ -257,7 +314,7 @@ def page2():
         cleaned_weights = ef.clean_weights() #to clean the raw weights
     
 
-        rcParams['figure.figsize'] = 15, 15
+        rcParams['figure.figsize'] = 16, 10
 
         TREASURY_BILL_RATE = 0.0528 
         TRADING_DAYS_PER_YEAR = 250
@@ -386,7 +443,7 @@ def page2():
 
           for ticker_name in tickers:
             ticker = yf.Ticker(ticker_name)
-            history = ticker.history(period='10y')
+            history = ticker.history(period='3y')
 
             if history.isnull().any(axis=1).iloc[0]:  # the first row can have NaNs
               history = history.iloc[1:]
@@ -419,40 +476,40 @@ def page2():
           X.append(np.sqrt(portfolio.variance))
           y.append(portfolio.expected_return)
 
-        sm = plt.cm.ScalarMappable(cmap='PuBu')
-        plt.plot(X, y, 'k', linewidth=3, label='Efficient frontier')
+        sm = plt.cm.ScalarMappable(cmap='Greens')
+        plt.plot(X, y, 'k', linewidth=3, label='Efficient Frontier')
 
         # Drawing optimized portfolios
         portfolio.optimize_with_risk_tolerance(0)
-        plt.plot(np.sqrt(portfolio.variance), portfolio.expected_return, 'm+', markeredgewidth=3, markersize=10, label='optimize_with_risk_tolerance(0)')
+        plt.plot(np.sqrt(portfolio.variance), portfolio.expected_return, 'm+', markeredgewidth=5, markersize=20, label='optimize_with_risk_tolerance')
 
         portfolio.optimize_with_risk_tolerance(20)
-        plt.plot(np.sqrt(portfolio.variance), portfolio.expected_return, 'r+', markeredgewidth=3, markersize=10, label='optimize_with_risk_tolerance(20)')
+        plt.plot(np.sqrt(portfolio.variance), portfolio.expected_return, 'r+', markeredgewidth=5, markersize=20, label='optimize_with_risk_tolerance')
 
         portfolio.optimize_with_expected_return(0.25)
-        plt.plot(np.sqrt(portfolio.variance), portfolio.expected_return, 'g+', markeredgewidth=3, markersize=10, label='optimize_with_expected_return(0.25)')
+        plt.plot(np.sqrt(portfolio.variance), portfolio.expected_return, 'g+', markeredgewidth=5, markersize=20, label='optimize_with_expected_return')
 
         portfolio.optimize_sharpe_ratio()
-        plt.plot(np.sqrt(portfolio.variance), portfolio.expected_return, 'y+', markeredgewidth=3, markersize=10, label='optimize_sharpe_ratio()')
+        plt.plot(np.sqrt(portfolio.variance), portfolio.expected_return, 'y+', markeredgewidth=5, markersize=20, label='optimize_sharpe_ratio')
 
         plt.colorbar(sm, label='Sharpe Ratio')
-        plt.xlabel('Portfolio standard deviation')
-        plt.ylabel('Portfolio expected (logarithmic) return')
-        plt.title('Efficient frontier', fontsize=15)
-        #plt.legend(loc='lower right')
-        plt.legend(title='Indicators', loc='lower right', bbox_to_anchor=(0.2, 0.2), fontsize='small', markerscale=0.5)
+        plt.xlabel('Portfolio standard deviation', fontsize=16)
+        plt.ylabel('Portfolio expected (logarithmic) return', fontsize=16)
+        plt.title('Efficient Frontier Graph', fontsize=18)
+        plt.legend(title='Indicators', loc='lower right')
         st.pyplot()
+        caption_text = ("This graph illustrates the optimal portfolio combinations of assets that offer\
+        the highest expected return for a given level of risk. ")
+        st.caption(caption_text)
 
 
         
         latest_prices = get_latest_prices(data)
-
-    
         performance_ef= ef.portfolio_performance(verbose=True)
         list_value_ef = list(performance_ef)
         list_value_ef = [x for x in list_value_ef if x != 0]
         df_ef = pd.DataFrame(list_value_ef, columns=["Value"])
-        Metric = ["Expected annual return (%)", "Annual volatility (%)", "Sharpe Ratio"]
+        Metric = ["Expected annual return", "Annual volatility", "Sharpe Ratio"]
         df_ef["Metrics"] = Metric
         df_ef = df_ef[["Metrics", "Value"]]
         da_ef = DiscreteAllocation(weights, latest_prices, total_portfolio_value)
@@ -474,7 +531,8 @@ def page2():
         da_hrp = DiscreteAllocation(hrp_weights, latest_prices, total_portfolio_value)
         label_hrp = list(hrp_weights.keys())
         value_hrp = list(hrp_weights.values())
-    
+        
+
         S = data.cov()
         ef_cvar = EfficientCVaR(mean, S)   
         ef_cvar_weights = ef_cvar.min_cvar()    
@@ -484,65 +542,122 @@ def page2():
         label_cvar = list(ef_cvar_weights.keys())
         value_cvar = list(ef_cvar_weights.values())
 
-        if operation == "Efficient Frontier":
+        
+        
+        # Calculate expected return and annual return
+        expected_return = returns.mean()
+        annual_return = (1 + expected_return) ** 252 - 1  # Assuming daily returns and 252 trading days in a year
+
+        # Calculate Sharpe ratio (considering risk-free rate of 2%)
+        risk_free_rate = 0.02
+        sharpe = sharpe_ratio(returns, risk_free_rate)
+
+        # Calculate mCVAR (considering 95% confidence level)
+        mCVAR_value = mCVAR(returns, confidence_level=0.95)
+
+        # Create DataFrame to display results
+        results_df = pd.DataFrame({
+            "Expected Return": expected_return,
+            "Annual Return": annual_return,
+            "Sharpe Ratio": sharpe,
+            "mCVAR (95% Confidence Level)": mCVAR_value
+        })
+
+        st.markdown('Portfolio performance metrics')
+        if operation == "Optimal Portfolio":
             da = da_ef
-        elif operation == "Hierarchical Risk Parity (HRP)":
+        elif operation == "Diversified Portfolio":
             da = da_hrp
         else:
             da = da_cvar
-        if operation == "Efficient Frontier":
+
+        if operation == "Optimal Portfolio":
             da = da_ef
             labels = label_ef
             values = value_ef
-            st.write("Performance:", df_ef)
+            st.write(df_ef)
         
         
-        elif operation == "Hierarchical Risk Parity (HRP)":
+        elif operation == "Diversified Portfolio":
             da = da_hrp
             labels = label_hrp
             values = value_hrp
-            st.write("Performance:", df_hrp)
+            st.write(df_hrp)
         
     
         else:        
             da = da_cvar
             labels = label_cvar
-            values = value_cvar 
-
+            values = value_cvar
+            st.write(results_df)
+        
+        
+        caption_text = ("Table 3: This displays portfolio performance metrics that is, expected return, annual return,\
+        and Sharpe ratio that are essential for risk-adjusted assessment and comparison.")
+        st.caption(caption_text)
+        
         weight = {'Ticker': labels,'Weight': values}
         
-        
-
         # Convert the weight to a DataFrame
-        weight = pd.DataFrame(weight)
-        st.write("Allocated weight:",weight)
+        filtered_weight = pd.DataFrame(weight)
+        st.markdown('Allocated weight to each stock')
+        
+        st.table(filtered_weight)
+        caption_text = ("Tale 4: This table shows allocated weight to each stock.")
+        st.caption(caption_text)
 
-        # Filter rows with values greater than 0
-    
-        filtered_weight = weight[~(weight == 0).any(axis=1)]
-        st.write("Filtered weight:",filtered_weight)
-        fig, ax = plt.subplots()
+        # Remove rows with zero weight
+        filtered_weight = filtered_weight[filtered_weight['Weight'] != 0]
+        st.table(filtered_weight)
+        caption_text = ("Table 5: This table shows the stock(s) that qualified to be in the portfolio.")
+        st.caption(caption_text)
+
+        # Convert weights to percentages
+        filtered_weight['Weight'] = filtered_weight['Weight'] * 100
+
+        # bar chart of the filtered weights
+        fig, ax = plt.subplots(figsize=(16, 10))
         light_colors = mcolors.LinearSegmentedColormap.from_list("", ["#cceeff", "#99ddff", "#66ccff", "#33bbff"])
+        bars = ax.bar(filtered_weight['Ticker'], filtered_weight['Weight'], color=light_colors(filtered_weight.index))
+        ax.set_xlabel('Ticker', fontsize=16)
+        ax.set_ylabel('Weight(%)', fontsize=16)
+        ax.set_title('Portfolio Allocation', fontsize=18)
+        # Add padding to the x-axis limits
+        padding = 0.5  # Adjust the padding value as needed
+        xmin, xmax = -padding, len(filtered_weight['Ticker']) - 1 + padding
+        ax.set_xlim(xmin, xmax)
+        # Add length labels to the bars
+        for bar in bars:
+            height = bar.get_height()             
+            ax.annotate(f'{height:.2f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom')
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
+
+        caption_text = ("This visualization presents a breakdown of the portfolio's asset allocation in the form of a bar chart.\
+        Each bar represents the weight allocation of different assets or asset classes in the portfolio.")
+        st.caption(caption_text)
         
-        ax.pie(filtered_weight['Weight'], labels=filtered_weight.Ticker, autopct='%1.0f%%') #, colors=light_colors(filtered_weight['values']))
-            
-        
-        ##ax.pie(values, labels=labels, autopct='%1.0f%%', colors=light_colors(values))
-        st.subheader('Portfolio Allocation')
-        st.pyplot()
-    
-        st.subheader(operation)
+        st.markdown("Discrete allocation")
         allocation, leftover = da.greedy_portfolio()
         allocation = pd.DataFrame(allocation.items(), columns=["Stock ticker", "Allocation(Unit)"])
-        st.write("Discrete allocation:",allocation)
+        st.table(allocation)
+        caption_text = ("Table 6: This chart showcases the discretionary allocation of stock within the portfolio.")
+        st.caption(caption_text)
         st.write("Funds remaining as of today's price: ${:.2f}".format(leftover))
+        caption_text = ("This is the remaining available funds in the portfolio after the asset allocation process.\
+                         It shows the portion of funds not allocated to any specific asset or investment.")
+        st.caption(caption_text)
+        
+        
         
     else:
         st.warning('Please enter valid tickers.')
 
     return data  # Return the data variable
 
- # Add radio buttons for user to choose options
+     # Add radio buttons for user to choose options
     option = st.radio("Choose an option:", ("Go to Page 1", "Log out"))
 
     if option == "Go to Page 1":
@@ -552,7 +667,7 @@ def page2():
         st.experimental_rerun()
 
 def main():
-    st.title("Portfolio Optimization App")
+    st.title("PORTFOLIO OPTIMIZATION APP")
     menu = ["Home", "Login", "SignUp"]
     choice = st.sidebar.selectbox("Menu", menu)
 
@@ -565,14 +680,13 @@ def main():
 
     if st.session_state.get('login_success'):
         page2()
-    # Log out and return to the home page
-    # Log out and return to the home page
+
+    # Logout session
     if st.session_state.login_success:
-        st.write('<style>#logout { position: absolute; top: 10px; right: 10px; }</style>', unsafe_allow_html=True)
-        if st.button("Logout", key="logout"):
+        logout = st.button("Logout")
+        if logout:
             st.session_state.login_success = False
-            st.experimental_rerun()
-            
+        
 if __name__ == "__main__":
     main()
 
